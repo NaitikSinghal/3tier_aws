@@ -31,10 +31,14 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > my-key.pem
         chmod 400 my-key.pem
+        
+    - name: Copy Docker Compose File to EC2
+      run: |
+        scp -o StrictHostKeyChecking=no -i keypair.pem docker-compose.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
 
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no -i my-key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i keypair.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
           docker-compose -f docker-compose.yaml pull
           docker-compose -f docker-compose.yaml up -d
         EOF
