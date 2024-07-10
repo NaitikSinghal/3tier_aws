@@ -35,19 +35,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Add SSH key
-      run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > my-key.pem
-        chmod 600 my-key.pem
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-north-1
 
-    - name: Copy Docker Compose File to EC2
+    - name: Copy Docker Compose file to EC2
       run: |
-        scp -o StrictHostKeyChecking=no -i my-key.pem docker-compose.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user
+        docker-compose-content=$(cat docker-compose.yaml)
+        aws ssm send-command \
+          --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+          --document-name "AWS-RunShellScript" \
+          --comment "Copy Docker Compose file" \
+          --parameters commands="echo '$docker-compose-content' > /home/ec2-user/docker-compose.yaml" \
+          --output text
 
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no -i my-key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          cd /home/ec2-user
-          docker-compose -f docker-compose.yaml pull
-          docker-compose -f docker-compose.yaml up -d
-        EOF
+        aws ssm send-command \
+          --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+          --document-name "AWS-RunShellScript" \
+          --comment "Deploy Docker Compose" \
+          --parameters commands="cd /home/ec2-user && sudo docker-compose pull && sudo docker-compose up -d" \
+          --output text
