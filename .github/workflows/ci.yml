@@ -44,12 +44,11 @@ jobs:
 
     - name: Copy Docker Compose file to EC2
       run: |
-        docker-compose-content=$(cat docker-compose.yaml)
         aws ssm send-command \
           --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
           --document-name "AWS-RunShellScript" \
           --comment "Copy Docker Compose file" \
-          --parameters commands="echo '$docker-compose-content' > /home/ec2-user/docker-compose.yaml" \
+          --parameters commands="$(printf "cat <<'EOF' > /home/ec2-user/docker-compose.yaml\n%s\nEOF" "$(cat docker-compose.yaml)")" \
           --output text
 
     - name: Deploy to EC2
