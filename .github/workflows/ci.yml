@@ -48,7 +48,7 @@ jobs:
           --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
           --document-name "AWS-RunShellScript" \
           --comment "Copy Docker Compose file" \
-          --parameters commands="$(printf "cat <<'EOF' > /home/ec2-user/docker-compose.yaml\n%s\nEOF" "$(cat docker-compose.yaml)")" \
+          --parameters commands="echo '$(cat docker-compose.yaml)' > /home/ec2-user/docker-compose.yaml" \
           --output text
 
     - name: Deploy to EC2
