@@ -41,21 +41,11 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
-
-    - name: Copy Docker Compose file to EC2
+    - name: Copy Docker Compose file and Deploy to EC2
       run: |
         aws ssm send-command \
           --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
           --document-name "AWS-RunShellScript" \
-          --comment "Copy Docker Compose file" \
-          --parameters commands="echo '$(cat docker-compose.yaml)' > /home/ec2-user/docker-compose.yaml" \
-          --output text
-
-    - name: Deploy to EC2
-      run: |
-        aws ssm send-command \
-          --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-          --document-name "AWS-RunShellScript" \
-          --comment "Deploy Docker Compose" \
-          --parameters commands="cd /home/ec2-user && sudo docker-compose pull && sudo docker-compose up -d" \
+          --comment "Copy and Deploy Docker Compose file" \
+          --parameters commands="echo '$(cat docker-compose.yaml)' > /home/ec2-user/docker-compose.yaml && cd /home/ec2-user && sudo docker-compose pull && sudo docker-compose up -d" \
           --output text
