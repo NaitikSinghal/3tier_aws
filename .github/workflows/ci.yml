@@ -27,35 +27,26 @@ jobs:
         docker-compose -f docker-compose.yaml build
         docker-compose -f docker-compose.yaml push
 
+
   deploy:
-    runs-on: self-hosted
-    needs: build
+    runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Pull images from docker-hub
-        run: sudo docker-compose pull
+    - name: Setup SSH for EC2
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Run Docker Container
-        run: sudo docker-compose up -d
+    - name: Copy Docker Compose file to EC2
+      run: scp -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} docker-compose.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/docker-compose.yaml
 
-        
-    # - name: Checkout code
-    #   uses: actions/checkout@v2
-
-    # - name: Set up AWS CLI
-    #   uses: aws-actions/configure-aws-credentials@v2
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-region: eu-north-1
-    
-    # - name: Copy Docker Compose file and Deploy to EC2
-    #   run: |
-    #     aws ssm send-command \
-    #       --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-    #       --document-name "AWS-RunShellScript" \
-    #       --comment "Copy and Deploy Docker Compose file" \
-    #       --parameters commands="echo '$(cat docker-compose.yaml)' > /home/ec2-user/docker-compose.yaml && cd /home/ec2-user && sudo docker-compose pull && sudo docker-compose up -d" \
-    #       --output text
-  
+    - name: SSH into EC2 and deploy
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+          cd /home/ec2-user
+          docker-compose -f docker-compose.yaml pull
+          docker-compose -f docker-compose.yaml up -d
+        EOF
